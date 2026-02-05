@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kasir Usaha</title>
+<style>
+body{Arial,sans-serif;background:#f2f2f2;padding:20px;}
+.box{background:#fff;padding:20px;border-radius:8px;max-width:1200px;auto;box-shadow:0 2px 10px rgba(0,0,0,0.1);}
+h2,h3{text-align:center;15px;}
+input,select,button{padding:8px 12px;4px;border:1px solid #ddd;border-radius:5px;}
+button{background:#2e7d32;color:#fff;border:none;cursor:pointer;transition:background 0.3s;}
+button:hover{background:#1b5e20;}
+button.admin{background:#1565c0;}
+button.toggle{background:#455a64;}
+button.hapus{background:#c62828;}
+button.hapus:hover{background:#b71c1c;}
+.hidden{display:none;}
+table{width:100%;border-collapse:collapse;10px;}
+th{background:#f5f5f5;font-weight:bold;}
+th,td{border:1px solid #ccc;padding:8px;text-align:center;}
+.nav{text-align:center;15px;}
+.right{text-align:right;}
+.kategori-box{background:#f9f9f9;padding:15px;border-radius:6px;15px;}
+.topbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;15px;}
+.qty-input{width:60px;text-align:center;}
+.menu-nav{display:flex;gap:10px;justify-content:center;25px;}
+.menu-nav button{background:#1976d2;padding:10px 20px;}
+.menu-nav button:hover{background:#0d47a1;}
+.aksi-btn{display:flex;gap:5px;justify-content:center;}
+input[type="file"]{padding:4px;}
+.nota{'Courier New',monospace;}
+.modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.5);}
+.modal-content{background:#fff;15% auto;padding:20px;border-radius:8px;width:400px;text-align:center;}
+.modal-buttons{20px;display:flex;gap:10px;justify-content:center;}
+.modal-buttons button{padding:10px 20px;}
+</style>
+<script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="box">
+ 
+<h2>🛒 KASIR USAHA</h2>
+ 
+<!-- Tombol navigasi menu -->
+<div class="menu-nav">
+<button onclick="showMenu('dataBarang')">📦 Data Barang</button>
+<button onclick="showMenu('transaksi')">🛒 Transaksi</button>
+<button onclick="showMenu('laporan')">📊 Laporan Periode</button>
+</div>
+ 
+<!-- DATA BARANG -->
+<div id="dataBarang">
+<h3>📦 DATA BARANG</h3>
+ 
+<div class="topbar">
+<button class="toggle" onclick="toggleKategori()">📂 Kelola Kategori</button>
+<input id="cariBarang" placeholder="🔍 Cari kode/nama barang..." onkeyup="renderBarang()">
+<select id="filterKategori" onchange="renderBarang()"></select>
+<select id="limitSelect" onchange="ubahLimit()">
+<option value="10">10 baris</option>
+<option value="20">20 baris</option>
+<option value="50">50 baris</option>
+<option value="100">100 baris</option>
+</select>
+<button onclick="exportBarangExcel()">📤 Export Semua (Excel)</button>
+<button onclick="exportBarangExcelKategori()">📂 Export per Kategori</button>
+<input type="file" id="importFile" accept=".xlsx,.xls,.csv" style="max-width:150px;">
+<button onclick="importBarangExcel()">📥 Import Excel</button>
+<button class="hapus" onclick="hapusSemuaBarang()">🗑️ Hapus Semua</button>
+</div>
+ 
+<!-- Kelola kategori -->
+<div id="kategoriPanel" class="hidden kategori-box">
+<h4>📂 Kelola Kategori</h4>
+<input id="katBaru" placeholder="Nama kategori baru">
+<button onclick="tambahKategori()">➕ Tambah</button>
+<ul id="listKategori" style="list-style:none;padding-left:0;"></ul>
+<hr>
+</div>
+ 
+<div class="topbar" style="background:#e8f5e9;padding:10px;border-radius:5px;">
+<h4 style="0;width:100%;">Tambah Barang Baru</h4>
+<input id="kode" placeholder="Kode Barang (unik)">
+<input id="nama" placeholder="Nama barang" style="flex-grow:1;">
+<select id="kategoriBarang"></select>
+<input id="beli" type="number" placeholder="Harga beli">
+<input id="jual" type="number" placeholder="Harga jual">
+<input id="stok" type="number" placeholder="Stok">
+<button onclick="tambahBarang()">➕ Tambah Barang</button>
+</div>
+ 
+<table>
+<thead>
+<tr>
+<th>No</th>
+<th>Kode</th>
+<th>Nama</th>
+<th>Kategori</th>
+<th>Stok</th>
+<th>Harga Beli</th>
+<th>Harga Jual</th>
+<th>Laba</th>
+<th>Aksi</th>
+</tr>
+</thead>
+<tbody id="listBarang"></tbody>
+</table>
+ 
+<div class="nav">
+<button onclick="prev()">⬅ Prev</button>
+<span id="pageInfo" style="0 15px;"></span>
+<button onclick="next()">Next ➡</button>
+</div>
+ 
+<hr>
+</div>
+ 
+<!-- TRANSAKSI -->
+<div id="transaksi" class="hidden">
+<h3>🛒 TRANSAKSI</h3>
+ 
+<div class="topbar">
+<input id="cariTransaksi" placeholder="🔍 Cari kode/nama barang lalu tekan ENTER..." 
+       onkeyup="handleSearchEnter(event)" style="flex-grow:1;">
+<select id="pilih" style="flex-grow:1;"></select>
+<input id="qty" type="number" placeholder="Qty" min="1" value="1" style="width:100px;">
+<button onclick="addToCart()">➕ Tambah ke Keranjang</button>
+</div>
+ 
+<table>
+<thead>
+<tr>
+<th>No</th>
+<th>Nama Barang</th>
+<th>Qty</th>
+<th>Harga Satuan</th>
+<th>Subtotal</th>
+<th>Laba</th>
+<th>Aksi</th>
+</tr>
+</thead>
+<tbody id="keranjang"></tbody>
+</table>
+ 
+<div style="text-align:right;20px;">
+<h3>Total: Rp <span id="total">0</span></h3>
+<h3>Uang Diterima: <input type="number" id="uang" placeholder="Jumlah uang" oninput="hitungKembalian()" style="width:200px;"></h3>
+<h3>Kembalian: Rp <span id="kembalian">0</span></h3>
+</div>
+ 
+<div class="topbar" style="justify-content:center;">
+<button onclick="simpanTransaksi()" style="background:#1976d2;padding:10px 30px;">💾 Simpan & Print Nota</button>
+<button class="hapus" onclick="resetTransaksi()">🗑️ Reset Transaksi</button>
+<button onclick="printNotaSaja()">🖨️ Print Nota Saja</button>
+</div>
+ 
+<hr>
+</div>
+ 
+<!-- LAPORAN PER PERIODE -->
+<div id="laporan" class="hidden">
+<h3>📊 LAPORAN PENJUALAN PER PERIODE</h3>
+ 
+<div class="topbar">
+<label>📅 Tanggal Mulai: <input type="date" id="tglMulai"></label>
+<label>📅 Sampai: <input type="date" id="tglAkhir"></label>
+<button onclick="renderLaporanPeriode()">🔍 Tampilkan</button>
+<button onclick="exportLaporanPeriodeExcel()">📤 Export Excel</button>
+<button class="hapus" onclick="hapusLaporanPeriode()">🗑️ Hapus Semua Laporan</button>
+</div>
+ 
+<table>
+<thead>
+<tr>
+<th>No</th>
+<th>Tanggal</th>
+<th>Kode</th>
+<th>Nama Barang</th>
+<th>Qty</th>
+<th>Harga Beli</th>
+<th>Harga Jual</th>
+<th>Subtotal</th>
+<th>Laba</th>
+<th>Aksi</th>
+</tr>
+</thead>
+<tbody id="laporanPeriode"></tbody>
+<tfoot>
+<tr style="background:#e8f5e9;font-weight:bold;">
+<td colspan="5">Total</td>
+<td id="totalBeli">0</td>
+<td id="totalJual">0</td>
+<td id="totalSubtotal">0</td>
+<td id="totalLaba">0</td>
+<td>-</td>
+</tr>
+</tfoot>
+</table>
+</div>
+ 
+<!-- Modal Konfirmasi Print Nota -->
+<div id="confirmModal" class="modal">
+<div class="modal-content">
+<h3>Konfirmasi Transaksi</h3>
+<p>Transaksi telah berhasil disimpan!</p>
+<p>Total: Rp <span id="modalTotal">0</span></p>
+<p>Apakah Anda ingin mencetak nota sekarang?</p>
+<div class="modal-buttons">
+<button onclick="printNotaAfterSave()" style="background:#2e7d32;">Ya, Print Nota</button>
+<button onclick="closeModal()" style="background:#757575;">Tidak, Tutup</button>
+</div>
+</div>
+</div>
+ 
+<script>
+// Data inisialisasi
+let barang = JSON.parse(localStorage.getItem("barang")) || [];
+let laporan = JSON.parse(localStorage.getItem("laporan")) || [];
+let kategori = JSON.parse(localStorage.getItem("kategori")) || ["Umum", "Makanan", "Minuman", "Elektronik", "Pakaian"];
+let keranjangArray = [];
+let page = 1, limit = 10;
+ 
+// Simpan transaksi sementara untuk nota
+let transaksiSementara = null;
+ 
+// Inisialisasi data contoh jika kosong
+if(barang.length === 0) {
+    barang = [
+        { kode: "BRG001", nama: "Kopi Kapal Api", kategori: "Minuman", beli: 15000, jual: 20000, stok: 50 },
+        { kode: "BRG002", nama: "Indomie Goreng", kategori: "Makanan", beli: 2500, jual: 3500, stok: 100 },
+        { kode: "BRG003", nama: "Teh Botol Sosro", kategori: "Minuman", beli: 4000, jual: 6000, stok: 80 },
+        { kode: "BRG004", nama: "Pensil 2B", kategori: "Alat Tulis", beli: 2000, jual: 3000, stok: 200 },
+        { kode: "BRG005", nama: "Buku Tulis", kategori: "Alat Tulis", beli: 5000, jual: 7000, stok: 150 }
+    ];
+    simpan();
+}
+ 
+// Tambah data contoh laporan jika kosong
+if(laporan.length === 0) {
+    let today = new Date().toISOString().split('T')[0];
+    let yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    let yesterdayStr = yesterday.toISOString().split('T')[0];
+    
+    laporan = [
+        { id: Date.now() + 1, tgl: today, waktu: "10:30:00", kode: "BRG001", nama: "Kopi Kapal Api", qty: 2, beli: 15000, jual: 20000, subtotal: 40000, laba: 10000 },
+        { id: Date.now() + 2, tgl: today, waktu: "11:15:00", kode: "BRG002", nama: "Indomie Goreng", qty: 5, beli: 2500, jual: 3500, subtotal: 17500, laba: 5000 },
+        { id: Date.now() + 3, tgl: yesterdayStr, waktu: "09:45:00", kode: "BRG003", nama: "Teh Botol Sosro", qty: 3, beli: 4000, jual: 6000, subtotal: 18000, laba: 6000 },
+        { id: Date.now() + 4, tgl: yesterdayStr, waktu: "14:20:00", kode: "BRG004", nama: "Pensil 2B", qty: 10, beli: 2000, jual: 3000, subtotal: 30000, laba: 10000 }
+    ];
+    simpan();
+}
+ 
+// ===== FUNGSI NAVIGASI MENU =====
+function showMenu(menu){
+    document.getElementById("dataBarang").classList.add("hidden");
+    document.getElementById("transaksi").classList.add("hidden");
+    document.getElementById("laporan").classList.add("hidden");
+    document.getElementById(menu).classList.remove("hidden");
+    
+    if(menu === 'transaksi') {
+        refreshTransaksi();
+        document.getElementById("cariTransaksi").focus();
+    }
+    if(menu === 'laporan') {
+        setTanggalDefault();
+        renderLaporanPeriode();
+    }
+}
+ 
+// ===== FUNGSI KATEGORI =====
+function toggleKategori(){ 
+    document.getElementById("kategoriPanel").classList.toggle("hidden"); 
+}
+ 
+function renderKategori(){
+    let listKategori = document.getElementById("listKategori");
+    let kategoriBarang = document.getElementById("kategoriBarang");
+    let filterKategori = document.getElementById("filterKategori");
+    
+    listKategori.innerHTML = "";
+    kategoriBarang.innerHTML = "";
+    filterKategori.innerHTML = '<option value="">Semua Kategori</option>';
+    
+    kategori.forEach((k,i)=>{
+        listKategori.innerHTML += `
+            <li style="padding:5px 0;display:flex;justify-content:space-between;align-items:center;">
+                <span>${k}</span>
+                <button class="hapus" onclick="hapusKategori(${i})" style="padding:2px 8px;">x</button>
+            </li>`;
+        kategoriBarang.innerHTML += `<option>${k}</option>`;
+        filterKategori.innerHTML += `<option>${k}</option>`;
+    });
+}
+ 
+function tambahKategori(){ 
+    let katBaru = document.getElementById("katBaru");
+    if(!katBaru.value.trim()) return alert("Nama kategori tidak boleh kosong");
+    
+    // Cek duplikat
+    if(kategori.includes(katBaru.value.trim())) {
+        return alert("Kategori sudah ada!");
+    }
+    
+    kategori.push(katBaru.value.trim()); 
+    katBaru.value=""; 
+    simpan(); 
+    renderKategori(); 
+}
+ 
+function hapusKategori(i){ 
+    if(confirm("Hapus kategori? Barang dalam kategori ini akan dipindahkan ke kategori 'Umum'")){ 
+        let katHapus = kategori[i];
+        
+        // Pindahkan barang ke kategori Umum
+        barang.forEach(b => {
+            if(b.kategori === katHapus) {
+                b.kategori = "Umum";
+            }
+        });
+        
+        kategori.splice(i,1); 
+        simpan(); 
+        renderKategori(); 
+        renderBarang();
+    } 
+}
+ 
+function ubahLimit() {
+    let limitSelect = document.getElementById("limitSelect");
+    limit = parseInt(limitSelect.value);
+    page = 1;
+    renderBarang();
+}
+ 
+// ===== FUNGSI BARANG =====
+function tambahBarang(){
+    let kode = document.getElementById("kode");
+    let nama = document.getElementById("nama");
+    let kategoriBarang = document.getElementById("kategoriBarang");
+    let beli = document.getElementById("beli");
+    let jual = document.getElementById("jual");
+    let stok = document.getElementById("stok");
+    
+    // Validasi
+    if(!kode.value.trim()) return alert("Kode barang harus diisi!");
+    if(!nama.value.trim()) return alert("Nama barang harus diisi!");
+    if(!beli.value || beli.value <= 0) return alert("Harga beli harus lebih dari 0!");
+    if(!jual.value || jual.value <= 0) return alert("Harga jual harus lebih dari 0!");
+    
+    // Cek kode duplikat
+    if(barang.some(b => b.kode === kode.value.trim())) {
+        return alert("Kode barang sudah ada! Gunakan kode yang unik.");
+    }
+    
+    barang.push({ 
+        kode: kode.value.trim(), 
+        nama: nama.value.trim(), 
+        kategori: kategoriBarang.value, 
+        beli: +beli.value, 
+        jual: +jual.value, 
+        stok: +stok.value || 0 
+    });
+    
+    // Reset form
+    kode.value = nama.value = beli.value = jual.value = stok.value = "";
+    kode.focus();
+    
+    simpan(); 
+    renderBarang(); 
+    refreshTransaksi();
+    alert("Barang berhasil ditambahkan!");
+}
+ 
+function renderBarang(){
+    let cariBarang = document.getElementById("cariBarang");
+    let filterKategori = document.getElementById("filterKategori");
+    let listBarang = document.getElementById("listBarang");
+    let pageInfo = document.getElementById("pageInfo");
+    
+    let key = cariBarang.value.toLowerCase();
+    let kat = filterKategori.value;
+    
+    // Filter: cari berdasarkan kode ATAU nama
+    let data = barang.filter(b => {
+        let cocokKode = b.kode.toLowerCase().includes(key);
+        let cocokNama = b.nama.toLowerCase().includes(key);
+        let cocokKategori = !kat || b.kategori == kat;
+        return (cocokKode || cocokNama) && cocokKategori;
+    });
+    
+    let start = (page - 1) * limit;
+    let slice = data.slice(start, start + limit);
+    
+    listBarang.innerHTML = "";
+    slice.forEach((b, index) => {
+        let i = barang.indexOf(b);
+        let no = start + index + 1;
+        let laba = b.jual - b.beli;
+        
+        listBarang.innerHTML += `
+<tr>
+<td>${no}</td>
+<td><strong>${b.kode}</strong></td>
+<td><input value="${b.nama}" onchange="edit(${i},'nama',this.value)" style="width:100%;"></td>
+<td><select onchange="edit(${i},'kategori',this.value)" style="width:100%;">
+    ${kategori.map(k => `<option ${k==b.kategori?"selected":""}>${k}</option>`).join("")}
+</select></td>
+<td><input type="number" value="${b.stok}" onchange="edit(${i},'stok',this.value)" style="width:80px;"></td>
+<td><input type="number" value="${b.beli}" onchange="edit(${i},'beli',this.value)" style="width:100px;"></td>
+<td><input type="number" value="${b.jual}" onchange="edit(${i},'jual',this.value)" style="width:100px;"></td>
+<td>${laba.toLocaleString('id-ID')}</td>
+<td class="aksi-btn">
+    <button class="hapus" onclick="hapusBarang(${i})" style="padding:4px 8px;">🗑️</button>
+</td>
+</tr>`;
+    });
+    
+    pageInfo.innerText = `Halaman ${page} dari ${Math.ceil(data.length/limit) || 1} (${data.length} barang)`;
+}
+ 
+function edit(i, f, v){ 
+    barang[i][f] = (f == "nama" || f == "kategori") ? v.trim() : +v; 
+    simpan(); 
+    renderBarang(); 
+    refreshTransaksi(); 
+}
+ 
+function hapusBarang(i){ 
+    if(confirm(`Hapus barang "${barang[i].nama}"?`)){ 
+        barang.splice(i,1); 
+        simpan(); 
+        renderBarang(); 
+        refreshTransaksi(); 
+    } 
+}
+ 
+function next(){ 
+    if(page < Math.ceil(barang.length/limit)) {
+        page++; 
+        renderBarang(); 
+    }
+} 
+ 
+function prev(){ 
+    if(page > 1) {
+        page--; 
+        renderBarang(); 
+    }
+}
+ 
+// ===== FUNGSI TRANSAKSI =====
+function handleSearchEnter(event) {
+    if (event.key === 'Enter') {
+        // Cari barang berdasarkan input
+        let searchValue = document.getElementById("cariTransaksi").value.toLowerCase();
+        
+        if (!searchValue) return;
+        
+        // Cari barang yang cocok
+        let foundItem = null;
+        let foundIndex = -1;
+        
+        for (let i = 0; i < barang.length; i++) {
+            let b = barang[i];
+            if (b.kode.toLowerCase().includes(searchValue) || b.nama.toLowerCase().includes(searchValue)) {
+                if (foundItem) {
+                    // Jika ada lebih dari satu hasil, gunakan dropdown
+                    refreshTransaksi(event);
+                    document.getElementById("pilih").focus();
+                    return;
+                }
+                foundItem = b;
+                foundIndex = i;
+            }
+        }
+        
+        if (foundItem && foundIndex !== -1) {
+            // Tambah ke keranjang dengan qty 1
+            addToCartWithIndex(foundIndex, 1);
+            document.getElementById("cariTransaksi").value = "";
+        } else {
+            // Jika tidak ditemukan, refresh dropdown
+            refreshTransaksi(event);
+        }
+    } else {
+        // Normal search as user types
+        refreshTransaksi(event);
+    }
+}
+ 
+function addToCartWithIndex(i, qty) {
+    if(qty > barang[i].stok) {
+        return alert(`Stok tidak cukup! Stok tersedia: ${barang[i].stok}`);
+    }
+    
+    let idx = keranjangArray.findIndex(x => x.index == i);
+    if(idx >= 0){ 
+        keranjangArray[idx].qty += qty; 
+    } else { 
+        keranjangArray.push({index: i, qty: qty}); 
+    }
+    
+    barang[i].stok -= qty; 
+    
+    renderKeranjang(); 
+    refreshTransaksi();
+    simpan();
+    document.getElementById("cariTransaksi").focus();
+}
+ 
+function refreshTransaksi(e){
+    let cariTransaksi = document.getElementById("cariTransaksi");
+    let pilih = document.getElementById("pilih");
+    
+    let key = cariTransaksi.value.toLowerCase();
+    pilih.innerHTML = '<option value="">-- Pilih Barang --</option>';
+    
+    barang.forEach((b,i) => {
+        // Cari berdasarkan kode ATAU nama
+        let cocokKode = b.kode.toLowerCase().includes(key);
+        let cocokNama = b.nama.toLowerCase().includes(key);
+        
+        if(cocokKode || cocokNama) {
+            pilih.innerHTML += `<option value="${i}">${b.kode} - ${b.nama} (Stok: ${b.stok}) - Rp${b.jual.toLocaleString('id-ID')}</option>`;
+        }
+    });
+}
+ 
+function addToCart(){
+    let pilih = document.getElementById("pilih");
+    let qty = document.getElementById("qty");
+    
+    let i = pilih.value; 
+    if(i === "" || i === null) return alert("Pilih barang terlebih dahulu!");
+    
+    let q = qty.value ? +qty.value : 1;
+    if(q < 1) return alert("Qty minimal 1!");
+    if(q > barang[i].stok) return alert(`Stok tidak cukup! Stok tersedia: ${barang[i].stok}`);
+    
+    addToCartWithIndex(parseInt(i), q);
+    qty.value = "1";
+    pilih.selectedIndex = 0;
+}
+ 
+function renderKeranjang(){
+    let keranjang = document.getElementById("keranjang");
+    let totalEl = document.getElementById("total");
+    let total = 0;
+    
+    keranjang.innerHTML = "";
+    keranjangArray.forEach((k,j) => {
+        let b = barang[k.index]; 
+        let subtotal = b.jual * k.qty; 
+        let laba = (b.jual - b.beli) * k.qty; 
+        total += subtotal;
+        
+        keranjang.innerHTML += `<tr>
+<td>${j+1}</td>
+<td><strong>${b.kode}</strong> - ${b.nama}</td>
+<td><input class="qty-input" type="number" value="${k.qty}" min="1" onchange="updateQty(${j},this.value)"></td>
+<td>Rp ${b.jual.toLocaleString('id-ID')}</td>
+<td>Rp ${subtotal.toLocaleString('id-ID')}</td>
+<td>Rp ${laba.toLocaleString('id-ID')}</td>
+<td class="aksi-btn">
+    <button class="hapus" onclick="hapusKeranjang(${j})" style="padding:4px 8px;">🗑️</button>
+</td>
+</tr>`;
+    });
+    
+    totalEl.innerText = total.toLocaleString('id-ID'); 
+    hitungKembalian();
+}
+ 
+function updateQty(j, val){
+    val = +val; 
+    if(val < 1) return alert("Qty minimal 1!");
+    
+    let k = keranjangArray[j];
+    let b = barang[k.index];
+    
+    // Hitung perubahan stok
+    let perubahan = val - k.qty;
+    if(perubahan > b.stok) return alert(`Stok tidak cukup! Stok tersedia: ${b.stok}`);
+    
+    // Update stok barang
+    b.stok -= perubahan;
+    k.qty = val;
+    
+    renderKeranjang(); 
+    renderBarang();
+    simpan();
+}
+ 
+function hapusKeranjang(j){
+    let k = keranjangArray[j]; 
+    barang[k.index].stok += k.qty; 
+    keranjangArray.splice(j,1);
+    renderKeranjang(); 
+    renderBarang(); 
+    refreshTransaksi();
+    simpan();
+}
+ 
+function resetTransaksi(){ 
+    if(keranjangArray.length === 0) return;
+    
+    if(confirm("Reset transaksi? Semua item di keranjang akan dikembalikan ke stok.")) {
+        keranjangArray.forEach(k => barang[k.index].stok += k.qty); 
+        keranjangArray = []; 
+        renderKeranjang(); 
+        renderBarang(); 
+        
+        let totalEl = document.getElementById("total");
+        let kembalianEl = document.getElementById("kembalian");
+        let uang = document.getElementById("uang");
+        
+        totalEl.innerText = "0";
+        kembalianEl.innerText = "0"; 
+        uang.value = "";
+        simpan();
+    }
+}
+ 
+function hitungKembalian(){
+    let uang = document.getElementById("uang");
+    let kembalianEl = document.getElementById("kembalian");
+    let totalEl = document.getElementById("total");
+    
+    let uangMasuk = +uang.value || 0;
+    let total = +totalEl.innerText.replace(/\./g, '') || 0;
+    let k = uangMasuk - total;
+    kembalianEl.innerText = k >= 0 ? k.toLocaleString('id-ID') : "0";
+}
+ 
+function simpanTransaksi(){
+    if(keranjangArray.length == 0) return alert("Keranjang kosong!");
+    
+    let uang = document.getElementById("uang");
+    let uangMasuk = +uang.value || 0;
+    let total = +document.getElementById("total").innerText.replace(/\./g, '') || 0;
+    
+    if(uangMasuk < total) return alert(`Uang kurang! Total: Rp ${total.toLocaleString('id-ID')}, Uang: Rp ${uangMasuk.toLocaleString('id-ID')}`);
+    
+    hitungKembalian();
+    let tgl = new Date().toISOString().split('T')[0];
+    let waktu = new Date().toLocaleTimeString('id-ID');
+    
+    // Simpan transaksi sementara untuk nota
+    transaksiSementara = {
+        items: keranjangArray.map(k => ({
+            barang: barang[k.index],
+            qty: k.qty
+        })),
+        total: total,
+        uang: uangMasuk,
+        kembalian: uangMasuk - total,
+        tanggal: tgl,
+        waktu: waktu
+    };
+    
+    // Simpan setiap item transaksi ke laporan
+    keranjangArray.forEach(k => {
+        let b = barang[k.index];
+        laporan.push({
+            id: Date.now() + Math.random(),
+            tgl: tgl,
+            waktu: waktu,
+            kode: b.kode,
+            nama: b.nama, 
+            qty: k.qty,
+            beli: b.beli, 
+            jual: b.jual, 
+            subtotal: b.jual * k.qty,
+            laba: (b.jual - b.beli) * k.qty
+        });
+    });
+    
+    // Tampilkan modal konfirmasi
+    document.getElementById("modalTotal").textContent = total.toLocaleString('id-ID');
+    document.getElementById("confirmModal").style.display = "block";
+    
+    // Simpan data ke localStorage
+    simpan();
+    
+    // CATATAN PENTING: Stok barang TIDAK di-reset di sini!
+    // Stok sudah berkurang saat barang ditambahkan ke keranjang
+    // dan tetap berkurang setelah transaksi disimpan
+}
+ 
+// Modal functions
+function closeModal() {
+    document.getElementById("confirmModal").style.display = "none";
+    
+    // Reset keranjang TANPA mengembalikan stok (karena sudah valid)
+    keranjangArray = []; 
+    renderKeranjang(); 
+    renderBarang();
+    
+    // Reset form input
+    document.getElementById("uang").value = "";
+    document.getElementById("total").textContent = "0";
+    document.getElementById("kembalian").textContent = "0";
+    
+    refreshTransaksi();
+    document.getElementById("cariTransaksi").focus();
+}
+ 
+function printNotaAfterSave() {
+    if (transaksiSementara) {
+        printNotaFromData(transaksiSementara);
+    }
+    closeModal();
+}
+ 
+function printNotaSaja() {
+    if(keranjangArray.length == 0) return alert("Keranjang kosong!");
+    
+    let total = keranjangArray.reduce((sum, k) => sum + (barang[k.index].jual * k.qty), 0);
+    let uang = document.getElementById("uang").value || 0;
+    let kembalian = uang - total;
+    
+    let notaData = {
+        items: keranjangArray.map(k => ({
+            barang: barang[k.index],
+            qty: k.qty
+        })),
+        total: total,
+        uang: uang,
+        kembalian: kembalian,
+        tanggal: new Date().toLocaleString('id-ID'),
+        waktu: new Date().toLocaleTimeString('id-ID')
+    };
+    
+    printNotaFromData(notaData);
+}
+ 
+function printNotaFromData(notaData) {
+    let nota = window.open("", "_blank", "width=400,height=600");
+    
+    let content = `
+    <html>
+    <head>
+        <title>Nota Transaksi</title>
+        <style>
+            @media print {
+                @page { 0; size: auto; }
+                body { 1.6cm; }
+            }
+            body { 
+                'Courier New',monospace; 
+                font-size:14px; 
+                padding:20px; 
+                max-width:350px; 
+                0 auto; 
+            }
+            .header { 
+                text-align:center; 
+                15px; 
+                border-bottom:1px dashed #000; 
+                padding-bottom:10px; 
+            }
+            .info { 
+                15px; 
+                font-size:12px; 
+            }
+            table { 
+                width:100%; 
+                border-collapse:collapse; 
+                15px; 
+            }
+            th, td { 
+                padding:5px 0; 
+                text-align:left; 
+                border-bottom:1px dashed #ccc; 
+            }
+            th { 
+                border-bottom:1px solid #000; 
+            }
+            .total-section { 
+                20px; 
+                border-top:2px solid #000; 
+                padding-top:10px; 
+            }
+            .footer { 
+                text-align:center; 
+                30px; 
+                font-size:12px; 
+                border-top:1px dashed #000; 
+                padding-top:10px; 
+            }
+            .center { text-align:center; }
+            .right { text-align:right; }
+        </style>
+    </head>
+    <body>
+    <div class="header">
+        <h2 style="0;">KASIR USAHA</h2>
+        <p style="5px 0;">Jl. Contoh No. 123, Kota</p>
+        <p style="5px 0;">Telp: 0812-3456-7890</p>
+    </div>
+    <div class="info">
+        <p style="5px 0;">Tanggal: ${notaData.tanggal}</p>
+        <p style="5px 0;">Kasir: Kasir 1</p>
+    </div>
+    <table>
+        <tr>
+            <th>Barang</th>
+            <th class="right">Qty</th>
+            <th class="right">Harga</th>
+            <th class="right">Subtotal</th>
+        </tr>`;
+    
+    notaData.items.forEach(item => {
+        let b = item.barang;
+        content += `<tr>
+            <td>${b.kode} - ${b.nama}</td>
+            <td class="right">${item.qty}</td>
+            <td class="right">${b.jual.toLocaleString('id-ID')}</td>
+            <td class="right">${(b.jual * item.qty).toLocaleString('id-ID')}</td>
+        </tr>`;
+    });
+    
+    content += `
+    </table>
+    <div class="total-section">
+        <p style="display:flex;justify-content:space-between;5px 0;">
+            <span>Total:</span>
+            <span>Rp ${notaData.total.toLocaleString('id-ID')}</span>
+        </p>
+        <p style="display:flex;justify-content:space-between;5px 0;">
+            <span>Uang:</span>
+            <span>Rp ${parseInt(notaData.uang).toLocaleString('id-ID')}</span>
+        </p>
+        <p style="display:flex;justify-content:space-between;5px 0;font-weight:bold;">
+            <span>Kembalian:</span>
+            <span>Rp ${notaData.kembalian.toLocaleString('id-ID')}</span>
+        </p>
+    </div>
+    <div class="footer">
+        <p>Terima kasih atas kunjungan Anda</p>
+        <p>*** Barang yang sudah dibeli tidak dapat ditukar ***</p>
+        <p style="20px;">www.kasirusaha.com</p>
+    </div>
+    <script>
+        window.onload = function() {
+            window.print();
+            setTimeout(function() {
+                window.close();
+            }, 500);
+        };
+    <\/script>
+    </body>
+    </html>`;
+    
+    nota.document.write(content);
+    nota.document.close();
+}
+ 
+// ===== FUNGSI LAPORAN =====
+function setTanggalDefault() {
+    let tglMulai = document.getElementById("tglMulai");
+    let tglAkhir = document.getElementById("tglAkhir");
+    
+    // Jika belum ada nilai, set default (7 hari terakhir)
+    if(!tglMulai.value || !tglAkhir.value) {
+        let end = new Date();
+        let start = new Date();
+        start.setDate(start.getDate() - 7); // 7 hari terakhir
+        
+        tglMulai.value = start.toISOString().split('T')[0];
+        tglAkhir.value = end.toISOString().split('T')[0];
+    }
+}
+ 
+function renderLaporanPeriode(){
+    let tglMulai = document.getElementById("tglMulai").value;
+    let tglAkhir = document.getElementById("tglAkhir").value;
+    let body = document.getElementById("laporanPeriode");
+    let totalBeliEl = document.getElementById("totalBeli");
+    let totalJualEl = document.getElementById("totalJual");
+    let totalSubtotalEl = document.getElementById("totalSubtotal");
+    let totalLabaEl = document.getElementById("totalLaba");
+    
+    console.log("Render laporan dipanggil");
+    console.log("Tanggal mulai:", tglMulai);
+    console.log("Tanggal akhir:", tglAkhir);
+    console.log("Total data laporan:", laporan.length);
+    
+    body.innerHTML = "";
+    let totalBeli = 0, totalJual = 0, totalSubtotal = 0, totalLaba = 0;
+    
+    // Jika tanggal tidak diisi, tampilkan semua data
+    if(!tglMulai || !tglAkhir) {
+        alert("Silakan isi tanggal mulai dan tanggal akhir!");
+        setTanggalDefault();
+        return;
+    }
+    
+    // Validasi tanggal
+    if(tglMulai > tglAkhir) {
+        alert("Tanggal mulai tidak boleh lebih besar dari tanggal akhir!");
+        return;
+    }
+    
+    // Filter laporan berdasarkan periode
+    let filteredLaporan = laporan.filter(l => {
+        // Pastikan data laporan memiliki properti tgl
+        if(!l.tgl) return false;
+        
+        // Filter berdasarkan rentang tanggal
+        let tanggalTransaksi = l.tgl;
+        return tanggalTransaksi >= tglMulai && tanggalTransaksi <= tglAkhir;
+    });
+    
+    console.log("Data setelah filter:", filteredLaporan.length);
+    
+    // Tampilkan laporan
+    if(filteredLaporan.length > 0) {
+        filteredLaporan.forEach((l, index) => {
+            // Pastikan semua properti ada
+            let beli = l.beli || 0;
+            let jual = l.jual || 0;
+            let qty = l.qty || 1;
+            let subtotal = l.subtotal || (jual * qty);
+            let laba = l.laba || ((jual - beli) * qty);
+            
+            body.innerHTML += `<tr>
+<td>${index + 1}</td>
+<td>${l.tgl || '-'}<br><small>${l.waktu || ''}</small></td>
+<td>${l.kode || '-'}</td>
+<td>${l.nama || '-'}</td>
+<td>${qty}</td>
+<td>Rp ${beli.toLocaleString('id-ID')}</td>
+<td>Rp ${jual.toLocaleString('id-ID')}</td>
+<td>Rp ${subtotal.toLocaleString('id-ID')}</td>
+<td>Rp ${laba.toLocaleString('id-ID')}</td>
+<td class="aksi-btn">
+    <button class="hapus" onclick="hapusSatuLaporan('${l.id}')" style="padding:4px 8px;" title="Hapus item ini">🗑️</button>
+</td>
+</tr>`;
+            
+            totalBeli += beli * qty;
+            totalJual += jual * qty;
+            totalSubtotal += subtotal;
+            totalLaba += laba;
+        });
+    } else {
+        body.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:20px;color:#666;">
+            <p>Tidak ada data transaksi pada periode ${tglMulai} sampai ${tglAkhir}</p>
+            <p>Total data transaksi yang tersimpan: ${laporan.length}</p>
+            ${laporan.length > 0 ? '<p>Coba rentang tanggal yang lebih luas</p>' : '<p>Buat transaksi terlebih dahulu untuk melihat laporan</p>'}
+        </td></tr>`;
+    }
+    
+    // Update total
+    totalBeliEl.innerText = `Rp ${totalBeli.toLocaleString('id-ID')}`;
+    totalJualEl.innerText = `Rp ${totalJual.toLocaleString('id-ID')}`;
+    totalSubtotalEl.innerText = `Rp ${totalSubtotal.toLocaleString('id-ID')}`;
+    totalLabaEl.innerText = `Rp ${totalLaba.toLocaleString('id-ID')}`;
+}
+ 
+function hapusSatuLaporan(id){
+    if(confirm("Hapus item laporan ini?")){ 
+        let index = laporan.findIndex(l => l.id == id || l.id === id);
+        if(index !== -1) {
+            laporan.splice(index, 1);
+            simpan();
+            renderLaporanPeriode();
+            alert("Item laporan berhasil dihapus!");
+        } else {
+            alert("Item tidak ditemukan!");
+        }
+    }
+}
+ 
+function hapusLaporanPeriode(){
+    let tglMulai = document.getElementById("tglMulai").value;
+    let tglAkhir = document.getElementById("tglAkhir").value;
+    
+    if(!tglMulai || !tglAkhir) {
+        if(confirm("Hapus SEMUA data laporan (" + laporan.length + " transaksi)?")) {
+            laporan = [];
+            simpan();
+            renderLaporanPeriode();
+            alert("Semua laporan telah dihapus!");
+        }
+    } else {
+        if(confirm(`Hapus semua laporan dari ${tglMulai} sampai ${tglAkhir}?`)) {
+            let jumlahSebelum = laporan.length;
+            laporan = laporan.filter(l => !(l.tgl >= tglMulai && l.tgl <= tglAkhir));
+            let jumlahDihapus = jumlahSebelum - laporan.length;
+            simpan();
+            renderLaporanPeriode();
+            alert(`${jumlahDihapus} transaksi telah dihapus!`);
+        }
+    }
+}
+ 
+// ===== FUNGSI IMPORT/EXPORT EXCEL =====
+function exportBarangExcel() {
+    try {
+        // Hitung total untuk summary
+        let totalStok = barang.reduce((sum, b) => sum + b.stok, 0);
+        let totalHargaBeli = barang.reduce((sum, b) => sum + (b.beli * b.stok), 0);
+        let totalHargaJual = barang.reduce((sum, b) => sum + (b.jual * b.stok), 0);
+        let totalLabaPotensial = totalHargaJual - totalHargaBeli;
+        
+        let dataForExport = barang.map(b => ({
+            "Kode": b.kode,
+            "Nama Barang": b.nama,
+            "Kategori": b.kategori,
+            "Stok": b.stok,
+            "Harga Beli": b.beli,
+            "Harga Jual": b.jual,
+            "Laba per Unit": b.jual - b.beli,
+            "Total Harga Beli": b.beli * b.stok,
+            "Total Harga Jual": b.jual * b.stok,
+            "Total Laba Potensial": (b.jual - b.beli) * b.stok
+        }));
+        
+        // Tambahkan baris summary di akhir
+        dataForExport.push({});
+        dataForExport.push({
+            "Kode": "TOTAL",
+            "Nama Barang": "SUMMARY",
+            "Kategori": "",
+            "Stok": totalStok,
+            "Harga Beli": "",
+            "Harga Jual": "",
+            "Laba per Unit": "",
+            "Total Harga Beli": totalHargaBeli,
+            "Total Harga Jual": totalHargaJual,
+            "Total Laba Potensial": totalLabaPotensial
+        });
+        
+        let ws = XLSX.utils.json_to_sheet(dataForExport);
+        let wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Data Barang");
+        
+        let date = new Date().toISOString().split('T')[0];
+        XLSX.writeFile(wb, `Data_Barang_${date}.xlsx`);
+        
+        alert(`Data berhasil diexport! ${barang.length} barang tersimpan.\n\nSummary:\nTotal Stok: ${totalStok}\nTotal Harga Beli: Rp ${totalHargaBeli.toLocaleString('id-ID')}\nTotal Harga Jual: Rp ${totalHargaJual.toLocaleString('id-ID')}\nTotal Laba Potensial: Rp ${totalLabaPotensial.toLocaleString('id-ID')}`);
+    } catch (error) {
+        alert("Error saat export: " + error.message);
+    }
+}
+ 
+function exportBarangExcelKategori() {
+    try {
+        let kat = document.getElementById("filterKategori").value;
+        let wb = XLSX.utils.book_new();
+        let date = new Date().toISOString().split('T')[0];
+        
+        if(kat) {
+            // Export satu kategori
+            let dataForExport = barang
+                .filter(b => b.kategori === kat)
+                .map(b => ({
+                    "Kode": b.kode,
+                    "Nama Barang": b.nama,
+                    "Kategori": b.kategori,
+                    "Stok": b.stok,
+                    "Harga Beli": b.beli,
+                    "Harga Jual": b.jual,
+                    "Laba": b.jual - b.beli
+                }));
+            
+            // Hitung total untuk kategori
+            let totalStok = dataForExport.reduce((sum, b) => sum + b.Stok, 0);
+            let totalBeli = dataForExport.reduce((sum, b) => sum + (b["Harga Beli"] * b.Stok), 0);
+            let totalJual = dataForExport.reduce((sum, b) => sum + (b["Harga Jual"] * b.Stok), 0);
+            
+            // Tambahkan summary
+            dataForExport.push({});
+            dataForExport.push({
+                "Kode": "TOTAL",
+                "Nama Barang": `SUMMARY ${kat}`,
+                "Kategori": "",
+                "Stok": totalStok,
+                "Harga Beli": "",
+                "Harga Jual": "",
+                "Laba": ""
+            });
+            
+            let ws = XLSX.utils.json_to_sheet(dataForExport);
+            XLSX.utils.book_append_sheet(wb, ws, kat.substring(0, 31));
+            
+            XLSX.writeFile(wb, `Data_Barang_${kat}_${date}.xlsx`);
+            alert(`Data kategori "${kat}" berhasil diexport! ${dataForExport.length - 2} barang tersimpan.`);
+        } else {
+            // Export semua kategori (multiple sheets)
+            let kategoriUnik = [...new Set(barang.map(b => b.kategori))];
+            
+            kategoriUnik.forEach(kat => {
+                let dataKat = barang
+                    .filter(b => b.kategori === kat)
+                    .map(b => ({
+                        "Kode": b.kode,
+                        "Nama Barang": b.nama,
+                        "Kategori": b.kategori,
+                        "Stok": b.stok,
+                        "Harga Beli": b.beli,
+                        "Harga Jual": b.jual,
+                        "Laba": b.jual - b.beli
+                    }));
+                
+                if(dataKat.length > 0) {
+                    // Hitung total per kategori
+                    let totalStok = dataKat.reduce((sum, b) => sum + b.Stok, 0);
+                    let totalBeli = dataKat.reduce((sum, b) => sum + (b["Harga Beli"] * b.Stok), 0);
+                    let totalJual = dataKat.reduce((sum, b) => sum + (b["Harga Jual"] * b.Stok), 0);
+                    
+                    // Tambahkan summary
+                    dataKat.push({});
+                    dataKat.push({
+                        "Kode": "TOTAL",
+                        "Nama Barang": `SUMMARY ${kat}`,
+                        "Kategori": "",
+                        "Stok": totalStok,
+                        "Harga Beli": "",
+                        "Harga Jual": "",
+                        "Laba": ""
+                    });
+                    
+                    let ws = XLSX.utils.json_to_sheet(dataKat);
+                    XLSX.utils.book_append_sheet(wb, ws, kat.substring(0, 31));
+                }
+            });
+            
+            XLSX.writeFile(wb, `Data_Barang_Per_Kategori_${date}.xlsx`);
+            alert(`Data berhasil diexport per kategori! ${kategoriUnik.length} kategori tersimpan.`);
+        }
+    } catch (error) {
+        alert("Error saat export: " + error.message);
+    }
+}
+ 
+function importBarangExcel() {
+    try {
+        let fileInput = document.getElementById("importFile");
+        if(!fileInput.files.length) return alert("Pilih file Excel terlebih dahulu!");
+        
+        let file = fileInput.files[0];
+        let reader = new FileReader();
+        
+        reader.onload = function(e) {
+            try {
+                let data = new Uint8Array(e.target.result);
+                let workbook = XLSX.read(data, {type: 'array'});
+                
+                // Ambil data dari sheet pertama
+                let sheetName = workbook.SheetNames[0];
+                let worksheet = workbook.Sheets[sheetName];
+                let jsonData = XLSX.utils.sheet_to_json(worksheet);
+                
+                if(jsonData.length === 0) {
+                    return alert("File Excel kosong atau format tidak sesuai!");
+                }
+                
+                // Validasi dan konversi data
+                let importedBarang = [];
+                let skipped = 0;
+                let updated = 0;
+                
+                jsonData.forEach((row, index) => {
+                    // Skip row summary/total
+                    if(row["Kode"] === "TOTAL" || row["Kode"] === "" || !row["Kode"]) {
+                        return;
+                    }
+                    
+                    let kode = (row["Kode"] || row["kode"] || "").toString().trim();
+                    let nama = (row["Nama Barang"] || row["nama"] || row["Nama"] || "").toString().trim();
+                    let kategori = (row["Kategori"] || row["kategori"] || "Umum").toString().trim();
+                    let stok = parseInt(row["Stok"] || row["stok"] || 0);
+                    let beli = parseInt(row["Harga Beli"] || row["beli"] || row["Harga_Beli"] || 0);
+                    let jual = parseInt(row["Harga Jual"] || row["jual"] || row["Harga_Jual"] || 0);
+                    
+                    // Validasi data minimal
+                    if(!kode || !nama || beli <= 0 || jual <= 0) {
+                        skipped++;
+                        return;
+                    }
+                    
+                    // Cek apakah barang sudah ada (update berdasarkan kode)
+                    let existingIndex = barang.findIndex(b => b.kode === kode);
+                    if(existingIndex !== -1) {
+                        // Update barang yang sudah ada
+                        barang[existingIndex] = {
+                            kode: kode,
+                            nama: nama,
+                            kategori: kategori,
+                            beli: beli,
+                            jual: jual,
+                            stok: stok
+                        };
+                        updated++;
+                    } else {
+                        // Tambah barang baru
+                        importedBarang.push({
+                            kode: kode,
+                            nama: nama,
+                            kategori: kategori,
+                            stok: stok,
+                            beli: beli,
+                            jual: jual
+                        });
+                    }
+                });
+                
+                // Tambahkan barang baru ke array barang
+                barang.push(...importedBarang);
+                simpan();
+                renderBarang();
+                refreshTransaksi();
+                
+                alert(`Import berhasil!\nDitambahkan: ${importedBarang.length} barang baru\nDiupdate: ${updated} barang\nDilewati: ${skipped} baris (data tidak valid)`);
+                
+                // Reset file input
+                fileInput.value = "";
+            } catch (error) {
+                alert("Error membaca file Excel: " + error.message);
+            }
+        };
+        
+        reader.readAsArrayBuffer(file);
+    } catch (error) {
+        alert("Error saat import: " + error.message);
+    }
+}
+ 
+function exportLaporanPeriodeExcel() {
+    try {
+        let tglMulai = document.getElementById("tglMulai").value;
+        let tglAkhir = document.getElementById("tglAkhir").value;
+        
+        // Filter laporan berdasarkan periode
+        let filteredLaporan = laporan.filter(l => {
+            if(!tglMulai || !tglAkhir) return true;
+            if(!l.tgl) return false;
+            return l.tgl >= tglMulai && l.tgl <= tglAkhir;
+        });
+        
+        if(filteredLaporan.length === 0) {
+            return alert("Tidak ada data laporan untuk diexport!");
+        }
+        
+        // Hitung total
+        let totalQty = filteredLaporan.reduce((sum, l) => sum + (l.qty || 1), 0);
+        let totalBeli = filteredLaporan.reduce((sum, l) => sum + ((l.beli || 0) * (l.qty || 1)), 0);
+        let totalJual = filteredLaporan.reduce((sum, l) => sum + ((l.jual || 0) * (l.qty || 1)), 0);
+        let totalSubtotal = filteredLaporan.reduce((sum, l) => sum + (l.subtotal || 0), 0);
+        let totalLaba = filteredLaporan.reduce((sum, l) => sum + (l.laba || 0), 0);
+        
+        let dataForExport = filteredLaporan.map(l => ({
+            "Tanggal": l.tgl || "",
+            "Waktu": l.waktu || "",
+            "Kode Barang": l.kode || "",
+            "Nama Barang": l.nama || "",
+            "Qty": l.qty || 1,
+            "Harga Beli": l.beli || 0,
+            "Harga Jual": l.jual || 0,
+            "Subtotal": l.subtotal || 0,
+            "Laba": l.laba || 0
+        }));
+        
+        // Tambahkan summary
+        dataForExport.push({});
+        dataForExport.push({
+            "Tanggal": "TOTAL",
+            "Waktu": "",
+            "Kode Barang": "",
+            "Nama Barang": "SUMMARY",
+            "Qty": totalQty,
+            "Harga Beli": totalBeli,
+            "Harga Jual": totalJual,
+            "Subtotal": totalSubtotal,
+            "Laba": totalLaba
+        });
+        
+        let ws = XLSX.utils.json_to_sheet(dataForExport);
+        let wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Laporan Penjualan");
+        
+        let date = new Date().toISOString().split('T')[0];
+        let period = tglMulai && tglAkhir ? `${tglMulai}_sd_${tglAkhir}` : "Semua";
+        XLSX.writeFile(wb, `Laporan_Penjualan_${period}_${date}.xlsx`);
+        
+        alert(`Laporan berhasil diexport! ${filteredLaporan.length} transaksi tersimpan.\n\nSummary:\nTotal Qty: ${totalQty}\nTotal Beli: Rp ${totalBeli.toLocaleString('id-ID')}\nTotal Jual: Rp ${totalJual.toLocaleString('id-ID')}\nTotal Subtotal: Rp ${totalSubtotal.toLocaleString('id-ID')}\nTotal Laba: Rp ${totalLaba.toLocaleString('id-ID')}`);
+    } catch (error) {
+        alert("Error saat export laporan: " + error.message);
+    }
+}
+ 
+function hapusSemuaBarang() {
+    if(barang.length === 0) return alert("Tidak ada data barang!");
+    
+    if(confirm(`Hapus SEMUA data barang (${barang.length} barang)?`)) {
+        if(confirm("⚠️ PERINGATAN: Ini akan menghapus SEMUA data barang permanen. Lanjutkan?")) {
+            barang = [];
+            simpan();
+            renderBarang();
+            alert("Semua data barang telah dihapus!");
+        }
+    }
+}
+ 
+// ===== FUNGSI UTILITAS =====
+function simpan(){ 
+    localStorage.setItem("barang", JSON.stringify(barang)); 
+    localStorage.setItem("laporan", JSON.stringify(laporan)); 
+    localStorage.setItem("kategori", JSON.stringify(kategori)); 
+}
+ 
+// ===== INISIALISASI =====
+document.addEventListener('DOMContentLoaded', function() {
+    renderKategori(); 
+    renderBarang(); 
+    refreshTransaksi(); 
+    setTanggalDefault();
+    renderLaporanPeriode();
+    
+    // Event listener untuk ESC untuk menutup modal
+    document.addEventListener('keydown', function(e) {
+        if(e.key === 'Escape') {
+            document.getElementById("confirmModal").style.display = "none";
+        }
+    });
+    
+    console.log("Sistem Kasir Usaha siap digunakan!");
+    console.log("Barang:", barang.length);
+    console.log("Laporan:", laporan.length);
+    console.log("Kategori:", kategori.length);
+});
+</script>
+</body>
+</html>
